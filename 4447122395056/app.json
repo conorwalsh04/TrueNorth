@@ -30,11 +30,6 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": [
-      "expo-router",
-      "expo-notifications",
-      "expo-file-system",
-      "expo-sharing"
-    ]
+    "plugins": ["expo-router", "expo-notifications"]
   }
 }
