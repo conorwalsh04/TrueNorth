@@ -1,6 +1,7 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,21 +12,33 @@ import {
 } from 'react-native';
 import FormField from '../../components/FormField';
 import { palette } from '../../constants/colors';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function LoginScreen() {
   const { colors } = useTheme();
+  const { login } = useAuth();
+  const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const onLogin = () => {
+  const onLogin = async () => {
     setError('');
     if (!username.trim() || !password.trim()) {
       setError('Please enter username and password.');
       return;
     }
-    setError('Invalid credentials.');
+    setLoading(true);
+    try {
+      await login(username, password);
+      router.replace('/(tabs)/habits');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,12 +90,17 @@ export default function LoginScreen() {
         ) : null}
 
         <Pressable
-          style={[styles.primaryButton, { backgroundColor: colors.accent }]}
-          onPress={onLogin}
+          style={[styles.primaryButton, { backgroundColor: colors.accent, opacity: loading ? 0.7 : 1 }]}
+          onPress={() => void onLogin()}
+          disabled={loading}
           accessibilityLabel="Log in"
           accessibilityRole="button"
         >
-          <Text style={styles.primaryButtonText}>Log in</Text>
+          {loading ? (
+            <ActivityIndicator color={palette.navy} accessibilityLabel="Signing in" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Log in</Text>
+          )}
         </Pressable>
 
         <Link href="/(auth)/register" asChild>
@@ -117,6 +135,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   primaryButtonText: { color: '#0D1B2A', fontWeight: '700', fontSize: 16 },
   linkWrap: { marginTop: 20, alignItems: 'center' },

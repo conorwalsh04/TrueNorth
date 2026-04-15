@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 export default function SettingsTab() {
   const { colors, isDark, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const router = useRouter();
   const [notificationsOn, setNotificationsOn] = useState(false);
 
@@ -58,7 +58,15 @@ export default function SettingsTab() {
         onPress={() => {
           Alert.alert('Log out', 'Are you sure you want to log out?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Log out' },
+            {
+              text: 'Log out',
+              onPress: () => {
+                void (async () => {
+                  await logout();
+                  router.replace('/(auth)/login');
+                })();
+              },
+            },
           ]);
         }}
         accessibilityLabel="Log out"
@@ -75,7 +83,16 @@ export default function SettingsTab() {
             'All habits, logs, categories, and targets will be permanently erased.',
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: () => {
+                  void (async () => {
+                    await deleteAccount();
+                    router.replace('/(auth)/login');
+                  })();
+                },
+              },
             ],
           );
         }}
