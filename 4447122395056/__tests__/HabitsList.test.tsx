@@ -8,6 +8,10 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: (callback: () => void) => callback(),
+}));
+
 jest.mock('../hooks/useHabits', () => ({
   useHabits: () => ({
     habits: [
@@ -38,6 +42,16 @@ jest.mock('../hooks/useCategories', () => ({
     addCategory: jest.fn(),
     updateCategory: jest.fn(),
     deleteCategory: jest.fn(),
+  }),
+}));
+
+jest.mock('../hooks/useLogs', () => ({
+  useLogs: () => ({
+    logs: [],
+    loading: false,
+    refresh: jest.fn(),
+    addLog: jest.fn(),
+    updateLog: jest.fn(),
   }),
 }));
 

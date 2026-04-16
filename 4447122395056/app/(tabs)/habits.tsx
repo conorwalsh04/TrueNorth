@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -20,7 +21,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useCategories } from '../../hooks/useCategories';
 import { useHabits } from '../../hooks/useHabits';
+import { useLogs } from '../../hooks/useLogs';
 import { fetchMotivationalQuote } from '../../utils/api';
+import { calculateStreak } from '../../utils/streaks';
 
 function greetingForNow(): string {
   const h = new Date().getHours();
@@ -35,11 +38,18 @@ export default function HabitsTab() {
   const router = useRouter();
   const { habits, loading, refresh, deleteHabit } = useHabits(user?.id ?? 0);
   const { categories, refresh: refreshCategories } = useCategories(user?.id ?? 0);
+  const { logs, refresh: refreshLogs } = useLogs();
   const [search, setSearch] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'all'>('all');
   const [quote, setQuote] = useState({ quote: '', author: '' });
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void Promise.all([refresh(), refreshCategories(), refreshLogs()]);
+    }, [refresh, refreshCategories, refreshLogs]),
+  );
 
   useEffect(() => {
     let active = true;
@@ -56,9 +66,9 @@ export default function HabitsTab() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshCategories()]);
+    await Promise.all([refresh(), refreshCategories(), refreshLogs()]);
     setRefreshing(false);
-  }, [refresh, refreshCategories]);
+  }, [refresh, refreshCategories, refreshLogs]);
 
   const filtered = useMemo(() => {
     let list = habits;
@@ -73,6 +83,7 @@ export default function HabitsTab() {
   }, [habits, search, selectedCategoryId]);
 
   const greeting = `${greetingForNow()}, ${user?.username ?? 'friend'}`;
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]} accessibilityLabel="Habits screen">
@@ -116,12 +127,7 @@ export default function HabitsTab() {
                 accessibilityLabel="Filter all categories"
                 accessibilityRole="button"
               >
-                <Text
-                  style={{
-                    color: selectedCategoryId === 'all' ? palette.navy : colors.text,
-                    fontWeight: '600',
-                  }}
-                >
+                <Text style={{ color: selectedCategoryId === 'all' ? palette.navy : colors.text, fontWeight: '600' }}>
                   All
                 </Text>
               </Pressable>
@@ -139,12 +145,7 @@ export default function HabitsTab() {
                   accessibilityLabel={`Filter category ${c.name}`}
                   accessibilityRole="button"
                 >
-                  <Text
-                    style={{
-                      color: selectedCategoryId === c.id ? palette.navy : colors.text,
-                      fontWeight: '600',
-                    }}
-                  >
+                  <Text style={{ color: selectedCategoryId === c.id ? palette.navy : colors.text, fontWeight: '600' }}>
                     {c.icon} {c.name}
                   </Text>
                 </Pressable>
@@ -157,41 +158,41 @@ export default function HabitsTab() {
             ) : null}
           </View>
         }
-        ListEmptyComponent={
-          !loading ? (
-            <EmptyState message="Start your journey. Add your first habit." icon="🧭" />
-          ) : null
-        }
+        ListEmptyComponent={!loading ? <EmptyState message="Start your journey. Add your first habit." icon="🧭" /> : null}
         renderItem={({ item }) => {
           const category = categories.find((c) => c.id === item.categoryId);
+          const habitLogs = logs.filter((log) => log.habitId === item.id);
+          const todayCount = habitLogs
+            .filter((log) => log.date === today)
+            .reduce((sum, log) => sum + log.count, 0);
+          const streak = calculateStreak(
+            habitLogs.map((log) => ({
+              habitId: log.habitId,
+              date: log.date,
+              count: log.count,
+              completed: log.completed,
+            })),
+            item.id,
+          );
+
           return (
             <View style={styles.cardWrap}>
               <HabitCard
                 habit={{ id: item.id, name: item.name }}
-                category={
-                  category
-                    ? { name: category.name, colour: category.colour, icon: category.icon }
-                    : undefined
-                }
-                streak={0}
-                todayCount={0}
-                onLog={() =>
-                  router.push({ pathname: '/habit-log', params: { habitId: String(item.id) } })
-                }
-                onEdit={() => router.push('/habit-form')}
+                category={category ? { name: category.name, colour: category.colour, icon: category.icon } : undefined}
+                streak={streak}
+                todayCount={todayCount}
+                onLog={() => router.push({ pathname: '/habit-log', params: { habitId: String(item.id) } })}
+                onEdit={() => router.push({ pathname: '/habit-form', params: { id: String(item.id) } })}
                 onDelete={() => {
-                  Alert.alert(
-                    'Delete habit',
-                    `Remove "${item.name}"? This cannot be undone.`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: () => void deleteHabit(item.id),
-                      },
-                    ],
-                  );
+                  Alert.alert('Delete habit', `Remove "${item.name}"? This cannot be undone.`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () => void deleteHabit(item.id),
+                    },
+                  ]);
                 }}
               />
             </View>

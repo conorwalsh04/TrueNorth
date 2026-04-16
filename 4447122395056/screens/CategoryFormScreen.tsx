@@ -1,9 +1,11 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import FormField from '../components/FormField';
 import { palette } from '../constants/colors';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useCategories } from '../hooks/useCategories';
 
 const PRESET_ICONS = ['🏃', '📚', '🥗', '🧘', '💪', '🎯', '💡', '❤️'] as const;
 const PRESET_COLOURS = [
@@ -19,10 +21,49 @@ const PRESET_COLOURS = [
 
 export default function CategoryFormScreen() {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
+  const { categories, addCategory, updateCategory } = useCategories(user?.id ?? 0);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState<string>(PRESET_ICONS[0]);
   const [colour, setColour] = useState<string>(PRESET_COLOURS[0]);
+  const [error, setError] = useState('');
+
+  const editing = useMemo(
+    () => categories.find((category) => category.id === Number(id)),
+    [categories, id],
+  );
+
+  useEffect(() => {
+    if (!editing) return;
+    setName(editing.name);
+    setIcon(editing.icon);
+    setColour(editing.colour);
+  }, [editing]);
+
+  const onSave = async () => {
+    setError('');
+    if (!user) return;
+    if (!name.trim()) {
+      setError('Category name is required.');
+      return;
+    }
+
+    const payload = {
+      name: name.trim(),
+      icon,
+      colour,
+      userId: user.id,
+    };
+
+    if (editing) {
+      await updateCategory(editing.id, payload);
+    } else {
+      await addCategory(payload);
+    }
+    router.back();
+  };
 
   return (
     <ScrollView
@@ -32,16 +73,20 @@ export default function CategoryFormScreen() {
       accessibilityLabel="Category form"
     >
       <Text style={[styles.title, { color: colors.text }]} accessibilityRole="header">
-        Category
+        {editing ? 'Edit category' : 'Category'}
       </Text>
       <FormField label="Name" placeholder="Category name" value={name} onChangeText={setName} />
+      {error ? <Text style={[styles.error, { color: palette.danger }]}>{error}</Text> : null}
       <Text style={[styles.section, { color: colors.text }]}>Icon</Text>
       <View style={styles.iconRow}>
         {PRESET_ICONS.map((e) => (
           <Pressable
             key={e}
             onPress={() => setIcon(e)}
-            style={[styles.iconBtn, icon === e && { borderColor: colors.accent }]}
+            style={[
+              styles.iconBtn,
+              { backgroundColor: colors.card, borderColor: icon === e ? colors.accent : colors.border },
+            ]}
             accessibilityLabel={`Select icon ${e}`}
             accessibilityRole="button"
           >
@@ -76,7 +121,7 @@ export default function CategoryFormScreen() {
         </Pressable>
         <Pressable
           style={[styles.btn, { backgroundColor: colors.accent }]}
-          onPress={() => router.back()}
+          onPress={() => void onSave()}
           accessibilityLabel="Save category"
           accessibilityRole="button"
         >
@@ -91,13 +136,13 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  error: { marginTop: -4, marginBottom: 8 },
   section: { fontWeight: '700', marginTop: 12, marginBottom: 8 },
   iconRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   iconBtn: {
     padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'transparent',
   },
   iconEmoji: { fontSize: 24 },
   colourRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
