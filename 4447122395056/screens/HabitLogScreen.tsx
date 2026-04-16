@@ -1,17 +1,57 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import FormField from '../components/FormField';
 import { palette } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
+import { useLogs } from '../hooks/useLogs';
 
 export default function HabitLogScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { habitId } = useLocalSearchParams<{ habitId?: string }>();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const numericHabitId = habitId ? Number(habitId) : undefined;
+  const { logs, addLog, updateLog } = useLogs(numericHabitId);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
   const [count, setCount] = useState('1');
   const [notes, setNotes] = useState('');
+
+  const existingLog = useMemo(
+    () => logs.find((l) => l.date === date && (numericHabitId == null || l.habitId === numericHabitId)),
+    [logs, date, numericHabitId],
+  );
+
+  useEffect(() => {
+    if (!existingLog) return;
+    setCount(String(existingLog.count));
+    setNotes(existingLog.notes ?? '');
+  }, [existingLog]);
+
+  const onSave = async () => {
+    const parsedCount = Number(count) || 0;
+    const safeHabitId = numericHabitId ?? logs[0]?.habitId;
+    if (!safeHabitId) {
+      router.back();
+      return;
+    }
+
+    const payload = {
+      habitId: safeHabitId,
+      date,
+      count: parsedCount > 0 ? parsedCount : 0,
+      notes: notes.trim() || null,
+      completed: parsedCount > 0 ? 1 : 0,
+    };
+
+    if (existingLog) {
+      await updateLog(existingLog.id, payload);
+    } else {
+      await addLog(payload);
+    }
+    router.back();
+  };
 
   return (
     <ScrollView
@@ -37,7 +77,7 @@ export default function HabitLogScreen() {
         </Pressable>
         <Pressable
           style={[styles.btn, { backgroundColor: colors.accent }]}
-          onPress={() => router.back()}
+          onPress={() => void onSave()}
           accessibilityLabel="Save log"
           accessibilityRole="button"
         >
