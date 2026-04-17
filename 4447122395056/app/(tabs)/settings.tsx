@@ -1,15 +1,50 @@
-import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { palette } from '../../constants/colors';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { cancelAllNotifications, scheduleHabitReminder } from '../../utils/notifications';
 
 export default function SettingsTab() {
   const { colors, isDark, toggleTheme } = useTheme();
   const { user, logout, deleteAccount } = useAuth();
   const router = useRouter();
   const [notificationsOn, setNotificationsOn] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const v = await AsyncStorage.getItem(STORAGE_KEYS.notificationsDaily);
+        if (v === 'true') {
+          setNotificationsOn(true);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  const onNotificationsToggle = useCallback(async (next: boolean) => {
+    if (next) {
+      const ok = await scheduleHabitReminder();
+      if (!ok) {
+        Alert.alert(
+          'Notifications',
+          'Permission was not granted. You can enable notifications in system settings.',
+        );
+        return;
+      }
+      await AsyncStorage.setItem(STORAGE_KEYS.notificationsDaily, 'true');
+      setNotificationsOn(true);
+      return;
+    }
+    await cancelAllNotifications();
+    await AsyncStorage.setItem(STORAGE_KEYS.notificationsDaily, 'false');
+    setNotificationsOn(false);
+  }, []);
 
   return (
     <ScrollView
@@ -38,7 +73,7 @@ export default function SettingsTab() {
         <Text style={[styles.rowLabel, { color: colors.text }]}>Daily reminder (8pm)</Text>
         <Switch
           value={notificationsOn}
-          onValueChange={setNotificationsOn}
+          onValueChange={(v) => void onNotificationsToggle(v)}
           trackColor={{ false: colors.border, true: colors.accent }}
           accessibilityLabel="Toggle daily habit reminder"
         />

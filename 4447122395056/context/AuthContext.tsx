@@ -3,6 +3,7 @@ import { eq, inArray } from 'drizzle-orm';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { categories, habitLogs, habits, targets, users } from '../db/schema';
 import { hashPassword } from '../utils/hash';
+import { cancelAllNotifications } from '../utils/notifications';
 
 const STORAGE_KEY = 'truenorth_user';
 
@@ -117,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    await cancelAllNotifications();
     await AsyncStorage.removeItem(STORAGE_KEY);
     setUser(null);
   }, []);
@@ -137,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await db.delete(habits).where(eq(habits.userId, uid));
     await db.delete(categories).where(eq(categories.userId, uid));
     await db.delete(users).where(eq(users.id, uid));
+    await cancelAllNotifications();
     await AsyncStorage.removeItem(STORAGE_KEY);
     setUser(null);
   }, [user]);

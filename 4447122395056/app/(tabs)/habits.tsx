@@ -66,8 +66,15 @@ export default function HabitsTab() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshCategories(), refreshLogs()]);
-    setRefreshing(false);
+    setQuoteLoading(true);
+    try {
+      await Promise.all([refresh(), refreshCategories(), refreshLogs()]);
+      const q = await fetchMotivationalQuote();
+      setQuote(q);
+    } finally {
+      setQuoteLoading(false);
+      setRefreshing(false);
+    }
   }, [refresh, refreshCategories, refreshLogs]);
 
   const filtered = useMemo(() => {
