@@ -1,20 +1,25 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
 import { palette } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
+import { cardElevation } from '../utils/cardStyles';
 
 export type QuoteCardProps = {
   quote: string;
   author: string;
   loading: boolean;
+  /** Shown when live API failed but a fallback quote is displayed */
+  fetchError?: boolean;
 };
 
-export default function QuoteCard({ quote, author, loading }: QuoteCardProps) {
-  const { colors } = useTheme();
+export default function QuoteCard({ quote, author, loading, fetchError }: QuoteCardProps) {
+  const { colors, isDark } = useTheme();
 
   return (
     <View
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      accessibilityLabel={loading ? 'Loading quote' : `Quote by ${author}`}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, cardElevation(isDark)]}
+      accessibilityLabel={
+        loading ? 'Loading quote' : fetchError ? 'Quote unavailable from network, showing offline quote' : `Quote by ${author}`
+      }
     >
       <View style={[styles.accentBar, { backgroundColor: palette.gold }]} />
       <View style={styles.body}>
@@ -26,6 +31,11 @@ export default function QuoteCard({ quote, author, loading }: QuoteCardProps) {
           </>
         ) : (
           <>
+            {fetchError ? (
+              <Text style={[styles.notice, { color: palette.danger }]} accessibilityLiveRegion="polite">
+                Live quote unavailable — showing an offline message.
+              </Text>
+            ) : null}
             <Text style={[styles.quote, { color: colors.text }]}>&ldquo;{quote}&rdquo;</Text>
             <Text style={[styles.author, { color: colors.secondaryText }]}>— {author}</Text>
           </>
@@ -45,6 +55,7 @@ const styles = StyleSheet.create({
   },
   accentBar: { width: 4 },
   body: { flex: 1, padding: 16 },
+  notice: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
   quote: { fontSize: 16, lineHeight: 24, fontStyle: 'italic' },
   author: { marginTop: 10, fontSize: 14, fontWeight: '600' },
   skelLine: { height: 14, borderRadius: 6, marginBottom: 10, width: '100%' },

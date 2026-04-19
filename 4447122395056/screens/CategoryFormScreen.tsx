@@ -6,6 +6,7 @@ import { palette } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
+import { hapticSuccess } from '../utils/haptics';
 
 const PRESET_ICONS = ['🏃', '📚', '🥗', '🧘', '💪', '🎯', '💡', '❤️'] as const;
 const PRESET_COLOURS = [
@@ -62,6 +63,7 @@ export default function CategoryFormScreen() {
     } else {
       await addCategory(payload);
     }
+    await hapticSuccess();
     router.back();
   };
 

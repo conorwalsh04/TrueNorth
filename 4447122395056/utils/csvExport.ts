@@ -45,10 +45,16 @@ export function buildHabitLogsCsv(
   return [header, ...rows].join('\n');
 }
 
+export type ExportCsvOptions = {
+  /** File name without path (e.g. truenorth-insights-week.csv) */
+  fileName?: string;
+};
+
 export async function exportLogsToCSV(
   logs: CsvHabitLog[],
   habits: CsvHabit[],
   categories: CsvCategory[],
+  options?: ExportCsvOptions,
 ): Promise<void> {
   const csv = buildHabitLogsCsv(logs, habits, categories);
 
@@ -63,7 +69,9 @@ export async function exportLogsToCSV(
     return;
   }
 
-  const path = `${dir}truenorth-habits-export.csv`;
+  const raw = options?.fileName?.replace(/[^a-zA-Z0-9._-]/g, '_') || 'truenorth-habits-export';
+  const file = raw.endsWith('.csv') ? raw : `${raw}.csv`;
+  const path = `${dir}${file}`;
   await FileSystem.writeAsStringAsync(path, csv, { encoding: 'utf8' });
 
   const canShare = await Sharing.isAvailableAsync();

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
@@ -9,7 +10,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { cancelAllNotifications, scheduleHabitReminder } from '../../utils/notifications';
 
 export default function SettingsTab() {
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark, toggleTheme, reduceMotion, toggleReduceMotion } = useTheme();
   const { user, logout, deleteAccount } = useAuth();
   const router = useRouter();
   const [notificationsOn, setNotificationsOn] = useState(false);
@@ -70,6 +71,16 @@ export default function SettingsTab() {
       </View>
 
       <View style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.rowLabel, { color: colors.text }]}>Reduce motion</Text>
+        <Switch
+          value={reduceMotion}
+          onValueChange={() => toggleReduceMotion()}
+          trackColor={{ false: colors.border, true: colors.accent }}
+          accessibilityLabel="Reduce motion for charts and visuals"
+        />
+      </View>
+
+      <View style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.rowLabel, { color: colors.text }]}>Daily reminder (8pm)</Text>
         <Switch
           value={notificationsOn}
@@ -87,6 +98,19 @@ export default function SettingsTab() {
       >
         <Text style={[styles.buttonText, { color: colors.text }]}>Manage Categories</Text>
       </Pressable>
+
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.label, { color: colors.secondaryText }]}>About</Text>
+        <Text style={[styles.value, { color: colors.text, fontSize: 16, marginBottom: 8 }]}>
+          TrueNorth
+        </Text>
+        <Text style={[styles.aboutMeta, { color: colors.secondaryText }]}>
+          Version {Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '—'}
+        </Text>
+        <Text style={[styles.aboutBody, { color: colors.secondaryText }]}>
+          Your data stays on this device. We do not send habits or logs to external servers for analytics.
+        </Text>
+      </View>
 
       <Pressable
         style={[styles.button, { backgroundColor: colors.accent }]}
@@ -146,6 +170,8 @@ const styles = StyleSheet.create({
   card: { borderRadius: 14, borderWidth: 1, padding: 16 },
   label: { fontSize: 13, marginBottom: 4 },
   value: { fontSize: 20, fontWeight: '700' },
+  aboutMeta: { fontSize: 13, marginBottom: 10 },
+  aboutBody: { fontSize: 14, lineHeight: 20 },
   row: {
     borderRadius: 14,
     borderWidth: 1,

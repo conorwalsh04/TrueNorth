@@ -2,8 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { AuthProvider } from '../context/AuthContext';
+import HeaderBrand from '../components/HeaderBrand';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { configureNotificationHandler, scheduleHabitReminder } from '../utils/notifications';
 
@@ -21,12 +23,20 @@ function RootNavigation() {
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen
+          name="onboarding"
+          options={{
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="habit-form"
           options={{
             headerShown: true,
-            title: 'TrueNorth 🧭',
+            headerTitle: () => <HeaderBrand />,
             headerStyle: { backgroundColor: colors.card },
             headerTintColor: colors.text,
             presentation: 'modal',
@@ -36,7 +46,7 @@ function RootNavigation() {
           name="habit-log"
           options={{
             headerShown: true,
-            title: 'TrueNorth 🧭',
+            headerTitle: () => <HeaderBrand />,
             headerStyle: { backgroundColor: colors.card },
             headerTintColor: colors.text,
             presentation: 'modal',
@@ -46,7 +56,7 @@ function RootNavigation() {
           name="categories"
           options={{
             headerShown: true,
-            title: 'TrueNorth 🧭',
+            headerTitle: () => <HeaderBrand />,
             headerStyle: { backgroundColor: colors.card },
             headerTintColor: colors.text,
             presentation: 'modal',
@@ -56,7 +66,7 @@ function RootNavigation() {
           name="category-form"
           options={{
             headerShown: true,
-            title: 'TrueNorth 🧭',
+            headerTitle: () => <HeaderBrand />,
             headerStyle: { backgroundColor: colors.card },
             headerTintColor: colors.text,
             presentation: 'modal',
@@ -66,7 +76,7 @@ function RootNavigation() {
           name="target-form"
           options={{
             headerShown: true,
-            title: 'TrueNorth 🧭',
+            headerTitle: () => <HeaderBrand />,
             headerStyle: { backgroundColor: colors.card },
             headerTintColor: colors.text,
             presentation: 'modal',
@@ -95,7 +105,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RootNavigation />
+        <SafeAreaProvider>
+          <RootNavigation />
+        </SafeAreaProvider>
       </AuthProvider>
     </ThemeProvider>
   );

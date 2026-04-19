@@ -5,6 +5,7 @@ import FormField from '../components/FormField';
 import { palette } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
 import { useLogs } from '../hooks/useLogs';
+import { hapticSuccess } from '../utils/haptics';
 
 export default function HabitLogScreen() {
   const { colors } = useTheme();
@@ -50,6 +51,7 @@ export default function HabitLogScreen() {
     } else {
       await addLog(payload);
     }
+    await hapticSuccess();
     router.back();
   };
 

@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { useHabits } from '../hooks/useHabits';
+import { hapticSuccess } from '../utils/haptics';
 
 export default function HabitFormScreen() {
   const { colors } = useTheme();
@@ -59,6 +60,7 @@ export default function HabitFormScreen() {
     } else {
       await addHabit(payload);
     }
+    await hapticSuccess();
     router.back();
   };
 

@@ -14,6 +14,9 @@ export type ThemeColors = {
 type ThemeContextValue = {
   isDark: boolean;
   toggleTheme: () => void;
+  /** Prefer simpler visuals / less chart decoration when enabled */
+  reduceMotion: boolean;
+  toggleReduceMotion: () => void;
   colors: ThemeColors;
 };
 
@@ -39,17 +42,24 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const v = await AsyncStorage.getItem(STORAGE_KEYS.themeIsDark);
+        const [themeV, reduceV] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEYS.themeIsDark),
+          AsyncStorage.getItem(STORAGE_KEYS.reduceMotion),
+        ]);
         if (cancelled) return;
-        if (v === 'true') {
+        if (themeV === 'true') {
           setIsDark(true);
-        } else if (v === 'false') {
+        } else if (themeV === 'false') {
           setIsDark(false);
+        }
+        if (reduceV === 'true') {
+          setReduceMotion(true);
         }
       } catch {
         /* keep default */
@@ -68,13 +78,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const toggleReduceMotion = useCallback(() => {
+    setReduceMotion((r) => {
+      const next = !r;
+      void AsyncStorage.setItem(STORAGE_KEYS.reduceMotion, next ? 'true' : 'false');
+      return next;
+    });
+  }, []);
+
   const value = useMemo<ThemeContextValue>(
     () => ({
       isDark,
       toggleTheme,
+      reduceMotion,
+      toggleReduceMotion,
       colors: isDark ? darkColors : lightColors,
     }),
-    [isDark, toggleTheme],
+    [isDark, toggleTheme, reduceMotion, toggleReduceMotion],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

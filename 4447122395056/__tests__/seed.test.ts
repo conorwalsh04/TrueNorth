@@ -91,7 +91,7 @@ describe('seedIfEmpty', () => {
     );
     const logsPayload = payloads.find((p) => Array.isArray(p) && p.length === 84);
     const targetsPayload = payloads.find(
-      (p) => Array.isArray(p) && p.length === 4 && p[0]?.type === 'weekly',
+      (p) => Array.isArray(p) && p.length === 5 && p[0]?.type === 'weekly',
     );
 
     expect(categoriesPayload).toBeTruthy();

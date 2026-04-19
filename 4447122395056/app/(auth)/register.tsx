@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import AppLogo from '../../components/AppLogo';
 import FormField from '../../components/FormField';
 import { palette } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
@@ -52,9 +53,7 @@ export default function RegisterScreen() {
         accessibilityLabel="Register scroll content"
       >
         <View style={styles.header}>
-          <Text style={styles.logo} accessibilityLabel="TrueNorth logo">
-            🧭
-          </Text>
+          <AppLogo size={112} />
           <Text style={[styles.title, { color: colors.text }]} accessibilityRole="header">
             Join TrueNorth
           </Text>
@@ -128,7 +127,6 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: { alignItems: 'center', marginBottom: 32 },
-  logo: { fontSize: 72, marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '700' },
   tagline: { fontSize: 16, marginTop: 8 },
   error: { marginBottom: 12, textAlign: 'center' },

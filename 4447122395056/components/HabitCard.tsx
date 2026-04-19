@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { palette } from '../constants/colors';
+import { space } from '../constants/spacing';
+import { type as typeScale } from '../constants/typography';
 import { useTheme } from '../context/ThemeContext';
+import { cardElevation } from '../utils/cardStyles';
 import CategoryBadge from './CategoryBadge';
 import StreakBadge from './StreakBadge';
 
@@ -13,6 +17,8 @@ export type HabitCardProps = {
   streak: number;
   todayCount: number;
   onLog: () => void;
+  /** Increment today’s count by 1 (quick action) */
+  onQuickAdd?: () => void | Promise<void>;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -23,28 +29,52 @@ export default function HabitCard({
   streak,
   todayCount,
   onLog,
+  onQuickAdd,
   onEdit,
   onDelete,
 }: HabitCardProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const [adding, setAdding] = useState(false);
+
+  const runQuickAdd = async () => {
+    if (!onQuickAdd || adding) return;
+    setAdding(true);
+    try {
+      await onQuickAdd();
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text style={[styles.name, { color: colors.text }]}>{habit.name}</Text>
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, cardElevation(isDark)]}>
+      <Text style={[typeScale.section, { color: colors.text }]}>{habit.name}</Text>
       {category ? (
         <CategoryBadge name={category.name} colour={category.colour} icon={category.icon} />
       ) : null}
       {streak > 0 ? <StreakBadge streak={streak} /> : null}
-      <Text style={[styles.meta, { color: colors.secondaryText }]}>Today: {todayCount}</Text>
+      <Text style={[styles.meta, { color: colors.secondaryText }, typeScale.caption]}>
+        Today: {todayCount}
+      </Text>
       <View style={styles.actions}>
-        <Pressable onPress={onLog} accessibilityLabel={`Log ${habit.name}`}>
-          <Text style={{ color: colors.accent, fontWeight: '600' }}>Log</Text>
+        {onQuickAdd ? (
+          <Pressable
+            onPress={() => void runQuickAdd()}
+            disabled={adding}
+            accessibilityLabel={`Add one for ${habit.name} today`}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Text style={[styles.accentBtn, { color: colors.accent }, typeScale.bodyStrong]}>+1 today</Text>
+          </Pressable>
+        ) : null}
+        <Pressable onPress={onLog} accessibilityLabel={`Log ${habit.name}`} style={({ pressed }) => pressed && styles.pressed}>
+          <Text style={[styles.mutedBtn, { color: colors.accent }, typeScale.bodyStrong]}>Log</Text>
         </Pressable>
-        <Pressable onPress={onEdit} accessibilityLabel={`Edit ${habit.name}`}>
-          <Text style={{ color: colors.text, fontWeight: '600' }}>Edit</Text>
+        <Pressable onPress={onEdit} accessibilityLabel={`Edit ${habit.name}`} style={({ pressed }) => pressed && styles.pressed}>
+          <Text style={[styles.mutedBtn, { color: colors.text }, typeScale.bodyStrong]}>Edit</Text>
         </Pressable>
-        <Pressable onPress={onDelete} accessibilityLabel={`Delete ${habit.name}`}>
-          <Text style={{ color: palette.danger, fontWeight: '600' }}>Delete</Text>
+        <Pressable onPress={onDelete} accessibilityLabel={`Delete ${habit.name}`} style={({ pressed }) => pressed && styles.pressed}>
+          <Text style={[styles.mutedBtn, { color: palette.danger }, typeScale.bodyStrong]}>Delete</Text>
         </Pressable>
       </View>
     </View>
@@ -52,8 +82,10 @@ export default function HabitCard({
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16, borderRadius: 14, borderWidth: 1 },
-  name: { fontSize: 18, fontWeight: '700' },
-  meta: { marginTop: 8 },
-  actions: { flexDirection: 'row', gap: 16, marginTop: 12 },
+  card: { padding: space.md, borderRadius: 16, borderWidth: 1 },
+  meta: { marginTop: space.sm },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginTop: space.md, alignItems: 'center' },
+  accentBtn: {},
+  mutedBtn: {},
+  pressed: { opacity: 0.75 },
 });

@@ -8,9 +8,16 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: (callback: () => void) => callback(),
-}));
+jest.mock('@react-navigation/native', () => {
+  const React = require('react');
+  return {
+    useFocusEffect: (callback: () => void) => {
+      React.useEffect(() => {
+        callback();
+      }, []);
+    },
+  };
+});
 
 jest.mock('../hooks/useHabits', () => ({
   useHabits: () => ({
@@ -72,6 +79,7 @@ describe('HabitsTab', () => {
     render(wrap(<HabitsTab />));
 
     expect(await screen.findByText('Morning Run')).toBeTruthy();
+    expect(await screen.findByLabelText(/List updated at/)).toBeTruthy();
     expect(screen.queryByText('Start your journey. Add your first habit.')).toBeNull();
   });
 });

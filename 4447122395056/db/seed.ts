@@ -132,6 +132,13 @@ export async function seedIfEmpty(userId: number): Promise<void> {
       categoryId: null,
     },
     {
+      habitId: null,
+      userId,
+      type: 'weekly',
+      goal: 12,
+      categoryId: catId('Fitness'),
+    },
+    {
       habitId: first.id,
       userId,
       type: 'weekly',

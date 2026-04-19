@@ -77,7 +77,14 @@ export default function TargetsTab() {
         ) : null}
 
         {!loading && targets.length === 0 ? (
-          <EmptyState message="Set a target to track your progress." icon="🎯" />
+          <EmptyState
+            title="No targets yet"
+            message="Set a target to track your progress."
+            subtitle="Create weekly or monthly goals for all habits, one habit, or a category."
+            icon="🎯"
+            actionLabel="Add target"
+            onAction={() => router.push('/target-form')}
+          />
         ) : null}
 
         {!loading &&
@@ -85,10 +92,20 @@ export default function TargetsTab() {
             const { count, ratio } = progressFor(target);
             const pct = Math.round(Math.min(1, ratio) * 100);
             const typeLabel = target.type === 'weekly' ? 'Weekly' : 'Monthly';
+            const cat =
+              target.categoryId != null
+                ? categories.find((c) => c.id === target.categoryId)
+                : undefined;
             const habitLabel =
               target.habitId != null
                 ? habitById.get(target.habitId)?.name ?? 'Habit'
-                : 'All habits';
+                : cat
+                  ? `${cat.icon} ${cat.name}`
+                  : 'All habits';
+
+            const remaining = Math.max(0, target.goal - count);
+            const statusLabel =
+              ratio >= 1 ? (ratio > 1 ? 'Above goal' : 'Goal met') : `Below goal — ${remaining} to go`;
 
             return (
               <View
@@ -104,7 +121,16 @@ export default function TargetsTab() {
                 </View>
                 <Text style={[styles.goal, { color: colors.text }]}>Goal: {target.goal}</Text>
                 <Text style={[styles.progressText, { color: colors.secondaryText }]}>
-                  Current: {count} ({pct}% )
+                  Current: {count} ({pct}%) · Remaining: {remaining}
+                </Text>
+                <Text
+                  style={[
+                    styles.statusLine,
+                    { color: ratio >= 1 ? colors.accent : colors.secondaryText },
+                  ]}
+                  accessibilityLabel={`Target status ${statusLabel}`}
+                >
+                  {statusLabel}
                 </Text>
                 <View style={styles.progressBarWrap}>
                   <ProgressBar progress={ratio} />
@@ -137,6 +163,7 @@ const styles = StyleSheet.create({
   trophy: { fontSize: 16 },
   goal: { marginTop: 8, fontWeight: '600' },
   progressText: { marginTop: 4 },
+  statusLine: { marginTop: 4, fontSize: 13, fontWeight: '600' },
   progressBarWrap: { marginTop: 8 },
   fab: {
     position: 'absolute',

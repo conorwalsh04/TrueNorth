@@ -17,7 +17,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { useCategories } from '../../hooks/useCategories';
 import { useHabits } from '../../hooks/useHabits';
 import { useLogs } from '../../hooks/useLogs';
+import { cardElevation } from '../../utils/cardStyles';
 import { exportLogsToCSV } from '../../utils/csvExport';
+import { hapticSuccess } from '../../utils/haptics';
 import {
   buildActivityBarData,
   buildCategoryPieData,
@@ -30,7 +32,7 @@ const screenWidth = Dimensions.get('window').width;
 
 export default function InsightsTab() {
   const { user } = useAuth();
-  const { colors } = useTheme();
+  const { colors, reduceMotion, isDark } = useTheme();
   const [period, setPeriod] = useState<InsightsPeriod>('week');
   const [exporting, setExporting] = useState(false);
 
@@ -75,11 +77,12 @@ export default function InsightsTab() {
       .sort((a, b) => b.streak - a.streak);
   }, [habits, logs, habitIds]);
 
-  const csvLogs = useMemo(() => {
+  /** Logs in the currently selected insights period (matches charts). */
+  const csvLogsForPeriod = useMemo(() => {
     return logs
-      .filter((l) => habitIds.has(l.habitId))
+      .filter((l) => habitIds.has(l.habitId) && l.date >= startKey && l.date <= endKey)
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  }, [logs, habitIds]);
+  }, [logs, habitIds, startKey, endKey]);
 
   const loading = habitsLoading || categoriesLoading || logsLoading;
 
@@ -90,6 +93,7 @@ export default function InsightsTab() {
       decimalPlaces: 0,
       color: (opacity = 1) => `rgba(242, 167, 27, ${opacity})`,
       labelColor: () => colors.text,
+      barRadius: reduceMotion ? 2 : 6,
       propsForLabels: {
         fontSize: 11,
       },
@@ -97,18 +101,18 @@ export default function InsightsTab() {
         stroke: colors.border,
       },
     }),
-    [colors],
+    [colors, reduceMotion],
   );
 
   const onExport = useCallback(async () => {
-    if (csvLogs.length === 0) {
-      Alert.alert('Nothing to export', 'Log some habits first, then try again.');
+    if (csvLogsForPeriod.length === 0) {
+      Alert.alert('Nothing to export', 'No habit logs in this period yet. Try another range or log activity first.');
       return;
     }
     setExporting(true);
     try {
       await exportLogsToCSV(
-        csvLogs.map((l) => ({
+        csvLogsForPeriod.map((l) => ({
           date: l.date,
           count: l.count,
           notes: l.notes,
@@ -117,14 +121,16 @@ export default function InsightsTab() {
         })),
         habits.map((h) => ({ id: h.id, name: h.name, categoryId: h.categoryId })),
         categories.map((c) => ({ id: c.id, name: c.name })),
+        { fileName: `truenorth-insights-${period}` },
       );
+      await hapticSuccess();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Unknown error';
       Alert.alert('Export failed', message);
     } finally {
       setExporting(false);
     }
-  }, [csvLogs, habits, categories]);
+  }, [csvLogsForPeriod, habits, categories, period]);
 
   const chartWidth = Math.max(280, screenWidth - 48);
 
@@ -174,7 +180,7 @@ export default function InsightsTab() {
         </View>
       ) : null}
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, cardElevation(isDark)]}>
         <Text style={[styles.cardTitle, { color: colors.text }]}>Activity</Text>
         <Text style={[styles.caption, { color: colors.secondaryText }]}>
           Total habit counts in the selected period
@@ -193,6 +199,8 @@ export default function InsightsTab() {
             style={styles.chart}
             fromZero
             showValuesOnTopOfBars
+            segments={reduceMotion ? 2 : 4}
+            withInnerLines={!reduceMotion}
           />
         ) : (
           <Text style={[styles.muted, { color: colors.secondaryText }]}>
@@ -201,7 +209,7 @@ export default function InsightsTab() {
         )}
       </View>
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, cardElevation(isDark)]}>
         <Text style={[styles.cardTitle, { color: colors.text }]}>Category mix</Text>
         <Text style={[styles.caption, { color: colors.secondaryText }]}>
           Share of logged counts by category
@@ -228,7 +236,7 @@ export default function InsightsTab() {
         )}
       </View>
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, cardElevation(isDark)]}>
         <Text style={[styles.cardTitle, { color: colors.text }]}>Streak leaderboard</Text>
         <Text style={[styles.caption, { color: colors.secondaryText }]}>
           Current streaks (🔥 = consecutive active days)
@@ -270,7 +278,9 @@ export default function InsightsTab() {
         {exporting ? (
           <ActivityIndicator color={palette.navy} />
         ) : (
-          <Text style={[styles.exportText, { color: palette.navy }]}>Export CSV</Text>
+          <Text style={[styles.exportText, { color: palette.navy }]}>
+            Export CSV ({period === 'week' ? 'week' : period === 'month' ? 'month' : 'all-time'} range)
+          </Text>
         )}
       </Pressable>
     </ScrollView>

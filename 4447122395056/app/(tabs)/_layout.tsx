@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
+import HeaderBrand from '../../components/HeaderBrand';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -33,7 +34,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerTitle: 'TrueNorth 🧭',
+        headerTitle: () => <HeaderBrand variant="tab" />,
         headerTitleAlign: 'center',
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.text,
