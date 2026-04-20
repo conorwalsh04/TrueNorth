@@ -30,6 +30,21 @@
       "favicon": "./assets/truenorth-logo.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-router", "expo-notifications"]
+    "plugins": [
+      "expo-router",
+      "expo-notifications"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f5f95650-dda8-40c8-b49a-ae634f66ea4a"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f5f95650-dda8-40c8-b49a-ae634f66ea4a"
+    }
   }
 }

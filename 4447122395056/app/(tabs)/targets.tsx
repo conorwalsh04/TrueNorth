@@ -1,8 +1,9 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import EmptyState from '../../components/EmptyState';
+import GoalCelebrationModal from '../../components/GoalCelebrationModal';
 import ProgressBar from '../../components/ProgressBar';
 import { palette } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
@@ -11,29 +12,26 @@ import { useCategories } from '../../hooks/useCategories';
 import { useHabits } from '../../hooks/useHabits';
 import { useLogs } from '../../hooks/useLogs';
 import { useTargets } from '../../hooks/useTargets';
+import { hasCelebratedTarget, markTargetCelebrated } from '../../utils/goalCelebrationStorage';
+import { progressForTarget, startOfMonthISO, startOfWeekISO } from '../../utils/targetProgress';
 
-function startOfWeek(): string {
-  const d = new Date();
-  const day = d.getDay(); // 0 Sunday
-  const diff = d.getDate() - day + 1; // Monday start
-  const monday = new Date(d.getFullYear(), d.getMonth(), diff);
-  return monday.toISOString().slice(0, 10);
-}
-
-function startOfMonth(): string {
-  const d = new Date();
-  const first = new Date(d.getFullYear(), d.getMonth(), 1);
-  return first.toISOString().slice(0, 10);
-}
+type CelebrationState = {
+  targetId: number;
+  periodKey: string;
+  title: string;
+  message: string;
+};
 
 export default function TargetsTab() {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
   const { targets, loading, refresh } = useTargets(user?.id ?? 0);
-  const { habits, refresh: refreshHabits } = useHabits(user?.id ?? 0);
+  const { habits, refresh: refreshHabits, loading: habitsLoading } = useHabits(user?.id ?? 0);
   const { categories } = useCategories(user?.id ?? 0);
-  const { logs, refresh: refreshLogs } = useLogs();
+  const { logs, refresh: refreshLogs, loading: logsLoading } = useLogs();
+
+  const [celebration, setCelebration] = useState<CelebrationState | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,33 +40,74 @@ export default function TargetsTab() {
   );
 
   const today = new Date().toISOString().slice(0, 10);
-  const weekStart = startOfWeek();
-  const monthStart = startOfMonth();
+  const weekStart = startOfWeekISO();
+  const monthStart = startOfMonthISO();
 
   const habitById = new Map(habits.map((h) => [h.id, h] as const));
 
-  const progressFor = (target: { habitId: number | null; type: 'weekly' | 'monthly'; categoryId: number | null; goal: number }) => {
-    const start = target.type === 'weekly' ? weekStart : monthStart;
-    let relevantLogs = logs.filter((log) => log.date >= start && log.date <= today);
+  useEffect(() => {
+    if (loading || logsLoading || habitsLoading || targets.length === 0 || celebration !== null) return;
+    let cancelled = false;
+    void (async () => {
+      const habitLookup = new Map(habits.map((h) => [h.id, h] as const));
+      for (const target of targets) {
+        const { ratio } = progressForTarget(target, logs, habits, today, weekStart, monthStart);
+        if (ratio < 1) continue;
+        const periodKey = target.type === 'weekly' ? weekStart : monthStart;
+        if (await hasCelebratedTarget(target.id, periodKey)) continue;
+        if (cancelled) return;
 
-    if (target.habitId != null) {
-      relevantLogs = relevantLogs.filter((log) => log.habitId === target.habitId);
-    } else if (target.categoryId != null) {
-      const habitIds = habits.filter((h) => h.categoryId === target.categoryId).map((h) => h.id);
-      relevantLogs = relevantLogs.filter((log) => habitIds.includes(log.habitId));
-    } else {
-      // global: all habits of user
-      const habitIds = habits.map((h) => h.id);
-      relevantLogs = relevantLogs.filter((log) => habitIds.includes(log.habitId));
-    }
+        const cat =
+          target.categoryId != null ? categories.find((c) => c.id === target.categoryId) : undefined;
+        const habitLabel =
+          target.habitId != null
+            ? habitLookup.get(target.habitId)?.name ?? 'your habit'
+            : cat
+              ? `${cat.icon} ${cat.name}`
+              : 'all habits';
 
-    const count = relevantLogs.reduce((sum, log) => sum + log.count, 0);
-    const ratio = target.goal > 0 ? count / target.goal : 0;
-    return { count, ratio };
-  };
+        const periodWord = target.type === 'weekly' ? 'weekly' : 'monthly';
+        setCelebration({
+          targetId: target.id,
+          periodKey,
+          title: 'You did it!',
+          message: `Your ${periodWord} target for ${habitLabel} is complete. Keep finding your True North.`,
+        });
+        return;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    loading,
+    logsLoading,
+    habitsLoading,
+    targets,
+    logs,
+    habits,
+    categories,
+    today,
+    weekStart,
+    monthStart,
+    celebration,
+  ]);
+
+  const onDismissCelebration = useCallback(async () => {
+    if (!celebration) return;
+    await markTargetCelebrated(celebration.targetId, celebration.periodKey);
+    setCelebration(null);
+  }, [celebration]);
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]} accessibilityLabel="Targets screen">
+      <GoalCelebrationModal
+        visible={celebration !== null}
+        title={celebration?.title ?? ''}
+        message={celebration?.message ?? ''}
+        allowConfetti={!reduceMotion}
+        onDismiss={() => void onDismissCelebration()}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
           <Text style={[styles.muted, { color: colors.secondaryText }]} accessibilityLabel="Loading targets">
@@ -89,7 +128,7 @@ export default function TargetsTab() {
 
         {!loading &&
           targets.map((target) => {
-            const { count, ratio } = progressFor(target);
+            const { count, ratio } = progressForTarget(target, logs, habits, today, weekStart, monthStart);
             const pct = Math.round(Math.min(1, ratio) * 100);
             const typeLabel = target.type === 'weekly' ? 'Weekly' : 'Monthly';
             const cat =
